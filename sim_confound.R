@@ -4,11 +4,11 @@ library(tidyverse)
 set.seed(04102020) # April 10, 2020
 
 # write general syntax for model describing outside influences on both 
-# stress and suceptability to COVID-19
+# inflam and suceptability to COVID-19
 
 mod.syntax = "
-stress ~ param1*covid
-mortality ~ param2*stress + param3*covid
+inflam ~ param1*covid
+mortality ~ param2*inflam + param3*covid
 "
 
 # possible effect sizes
@@ -18,7 +18,7 @@ possible_r = c(.1, .5)
 possible_n = c(25, 75, 125, 200, 300)
 
 #bootstrap
-bootn = 200
+bootn = 10000
 
 
 # have to figure out how to code this
@@ -38,11 +38,11 @@ fix_param2 = numeric(length = total_sim)
 fix_param3 = numeric(length = total_sim)
 fix_N = numeric(length = total_sim)
 #estimated relationships
-est_stress_mortality_nocontrol = numeric(length = total_sim)
-est_stress_mortality_control_covid = numeric(length = total_sim)
+est_inflam_mortality_nocontrol = numeric(length = total_sim)
+est_inflam_mortality_control_covid = numeric(length = total_sim)
 #pvalues
-pval_stress_mortality_nocontrol = numeric(length = total_sim)
-pval_stress_mortality_control_covid = numeric(length = total_sim)
+pval_inflam_mortality_nocontrol = numeric(length = total_sim)
+pval_inflam_mortality_control_covid = numeric(length = total_sim)
 
 
 sim_num = 0
@@ -61,25 +61,25 @@ for(i in 1:nrow(all_combinations)){
     fix_N[sim_num] = all_combinations$N[i]
     simulated <- simulateData(specific.model, sample.nobs=all_combinations$N[i])
     #no covariates
-    test_nocontrol = lm(mortality~stress, data = simulated)
-    est_stress_mortality_nocontrol[sim_num] = test_nocontrol$coefficients["stress"]
-    pval_stress_mortality_nocontrol[sim_num] = coef(summary(test_nocontrol))["stress", "Pr(>|t|)"]
+    test_nocontrol = lm(mortality~inflam, data = simulated)
+    est_inflam_mortality_nocontrol[sim_num] = test_nocontrol$coefficients["inflam"]
+    pval_inflam_mortality_nocontrol[sim_num] = coef(summary(test_nocontrol))["inflam", "Pr(>|t|)"]
     #control covid
-    test_covid = lm(mortality~stress + covid, data = simulated)
-    est_stress_mortality_control_covid[sim_num] = test_covid$coefficients["stress"]
-    pval_stress_mortality_control_covid[sim_num] = coef(summary(test_covid))["stress", "Pr(>|t|)"]
+    test_covid = lm(mortality~inflam + covid, data = simulated)
+    est_inflam_mortality_control_covid[sim_num] = test_covid$coefficients["inflam"]
+    pval_inflam_mortality_control_covid[sim_num] = coef(summary(test_covid))["inflam", "Pr(>|t|)"]
   }
 }
 
 sim_results = data.frame(
   N = fix_N,
   popParam = fix_param2,
-  covid2stress = fix_param1,
+  covid2inflam = fix_param1,
   covid2mortality = fix_param3,
-  est_nocov = est_stress_mortality_nocontrol,
-  pval_nocov = pval_stress_mortality_nocontrol,
-  est_covid = est_stress_mortality_control_covid,
-  pval_covid = pval_stress_mortality_control_covid
+  est_nocov = est_inflam_mortality_nocontrol,
+  pval_nocov = pval_inflam_mortality_nocontrol,
+  est_covid = est_inflam_mortality_control_covid,
+  pval_covid = pval_inflam_mortality_control_covid
 )
 
 save(sim_results, file = "sim_confound.Rdata")
@@ -87,10 +87,10 @@ load("sim_confound.Rdata")
 
 sim_results = sim_results %>%
   mutate(ID = row_number(),
-         covid2stress = factor(covid2stress, 
+         covid2inflam = factor(covid2inflam, 
                             levels = c(.1, .5),
-                            labels = c("COVID-19 weak \n cause of stress", 
-                                       "COVID-19 strong \n cause of stress")),
+                            labels = c("COVID-19 weak \n cause of inflammation", 
+                                       "COVID-19 strong \n cause of inflammation")),
          covid2mortality = factor(covid2mortality, 
                                      levels = c(.1,  .5),
                                      labels = c("COVID-19 weak \n cause of mortality", 
@@ -118,7 +118,7 @@ sim_results %>%
                      "Covariate(s)", 
                        labels = c("Controlling for COVID-19",
                                   "Not controlling for COVID-19")) +
-  facet_grid(covid2stress~covid2mortality) +
+  facet_grid(covid2inflam~covid2mortality) +
   theme_minimal()  + 
   theme(legend.position = "bottom", plot.title.position = "plot")
 
@@ -129,7 +129,7 @@ sim_results %>%
   gather("key", "value", which(grepl("_", names(.)))) %>%
   separate("key", into = c("stat", "control"), sep = "_") %>%
   spread("stat", "value") %>%
-  group_by(N, control, covid2stress, covid2mortality) %>%
+  group_by(N, control, covid2inflam, covid2mortality) %>%
   mutate(sig = ifelse(pval < .05, 1,0)) %>%
   summarize(power = sum(sig)/n()) %>%
   filter(N < 300) %>%
@@ -138,5 +138,5 @@ sim_results %>%
   labs(x = "Sample Size", 
        y = "Power",
        color = "Covariate(s)") +
-  facet_grid(covid2stress~covid2mortality)
+  facet_grid(covid2inflam~covid2mortality)
 ggsave("simulation_confound_power.pdf", width = 8, height = 5)

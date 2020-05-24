@@ -18,7 +18,7 @@ possible_r = c(.1, .5)
 possible_n = c(25, 75, 125, 200, 300)
 
 #bootstrap
-bootn = 200
+bootn = 10000
 
 
 # have to figure out how to code this
@@ -94,8 +94,8 @@ sim_results = sim_results %>%
                                           "SES strong \n cause of COVID-19")),
          covid2inflammation = factor(covid2inflammation, 
                                   levels = c(.1,  .5),
-                                  labels = c("COVID-19 weak \n cause of inflammation", 
-                                             "COVID-19 strong \n cause of inflammation")))
+                                  labels = c("COVID-19 weak \n cause of outcome", 
+                                             "COVID-19 strong \n cause of outcome")))
 
 man.colors = c("#1A85FF", "#D41159")
 
